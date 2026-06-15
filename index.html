@@ -255,7 +255,7 @@
 
         // URL игроков с карты Legion Kings через CORS-прокси
         const TARGET_URL = "https://map.legion-kings.ru/tiles/players.json";
-        const DYNMAP_JSON_URL = `https://api.allorigins.win/raw?url=${encodeURIComponent(TARGET_URL)}`;
+const DYNMAP_JSON_URL = `https://corsproxy.io/?${encodeURIComponent(TARGET_URL)}`;
 
         // 2. Получение сообщений чата в реальном времени
         database.ref('chat').limitToLast(50).on('child_added', (snapshot) => {
