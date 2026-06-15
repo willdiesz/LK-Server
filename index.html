@@ -1,244 +1,4 @@
-<!DOCTYPE html>
-<html lang="ru" data-theme="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft Server Chat & Online</title>
-    <style>
-        /* --- НАСТРОЙКА ЦВЕТОВЫХ ТЕМ --- */
-        :root[data-theme="dark"] {
-            --bg-color: #0b0c16;
-            --container-bg: rgba(16, 18, 35, 0.65);
-            --border-color: rgba(90, 104, 240, 0.2);
-            --text-main: #f0f2f5;
-            --text-muted: #8fa0dd;
-            --accent-color: #6366f1;
-            /* Градиенты жидкого фона под референс экрана блокировки */
-            --fluid-1: #2e0854;
-            --fluid-2: #181a61;
-            --fluid-3: #4f46e5;
-        }
-
-        :root[data-theme="light"] {
-            --bg-color: #f4f7fe;
-            --container-bg: rgba(255, 255, 255, 0.75);
-            --border-color: rgba(99, 102, 241, 0.15);
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --accent-color: #3b82f6;
-            --fluid-1: #bfdbfe;
-            --fluid-2: #dbeafe;
-            --fluid-3: #eff6ff;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Roboto, sans-serif;
-            transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* --- АНИМИРОВАННЫЙ ЖИДКИЙ ФОН (GLOW BLOBS) --- */
-        .background-glow {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: -1;
-            overflow: hidden;
-            filter: blur(80px);
-            opacity: 0.8;
-        }
-
-        .blob {
-            position: absolute;
-            background: linear-gradient(135deg, var(--fluid-3), var(--fluid-1));
-            border-radius: 50%;
-            mix-blend-mode: screen;
-            animation: float-blob 20s infinite alternate ease-in-out;
-        }
-        
-        :root[data-theme="light"] .blob {
-            mix-blend-mode: multiply;
-            opacity: 0.6;
-        }
-
-        .blob-1 { width: 600px; height: 600px; top: -10%; right: -10%; background: var(--fluid-1); animation-duration: 25s; }
-        .blob-2 { width: 500px; height: 500px; bottom: -10%; left: -5%; background: var(--fluid-2); animation-duration: 18s; animation-delay: -5s; }
-        .blob-3 { width: 400px; height: 400px; top: 40%; left: 40%; background: var(--fluid-3); animation-duration: 22s; animation-delay: -2s; }
-
-        @keyframes float-blob {
-            0% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
-            50% { transform: translate(80px, 50px) scale(1.1) rotate(180deg); }
-            100% { transform: translate(-40px, -80px) scale(0.9) rotate(360deg); }
-        }
-
-        /* --- ШАПКА --- */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 40px;
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border-color);
-            z-index: 10;
-        }
-
-        .logo h1 {
-            font-size: 20px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            background: linear-gradient(45deg, var(--text-main), var(--accent-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .theme-toggle {
-            background: var(--container-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 10px 20px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .theme-toggle:hover { transform: translateY(-2px); border-color: var(--accent-color); }
-
-        /* --- СЕТКА ИНТЕРФЕЙСА --- */
-        main {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 25px;
-            flex: 1;
-            padding: 25px;
-            height: calc(100vh - 85px);
-            max-width: 1600px;
-            width: 100%;
-            margin: 0 auto;
-            z-index: 10;
-        }
-
-        .glass-panel {
-            background: var(--container-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 24px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
-        }
-
-        .panel-header {
-            padding: 20px 25px;
-            font-size: 16px;
-            font-weight: 600;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .online-count { background: var(--accent-color); color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
-        .players-list { list-style: none; padding: 15px; overflow-y: auto; flex: 1; }
-        
-        .player-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; margin-bottom: 8px; }
-        .player-avatar { width: 32px; height: 32px; border-radius: 8px; background: #55ff55; }
-        .player-name { font-weight: 500; font-size: 15px; }
-
-        /* --- ГЛOБАЛЬНЫЙ ЧАТ --- */
-        .chat-container { flex: 1; }
-        .chat-messages { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-
-        .chat-message { display: flex; flex-direction: column; max-width: 80%; animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .msg-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 12px; color: var(--text-muted); }
-        .msg-author { font-weight: 600; color: var(--accent-color); }
-        
-        .msg-body { 
-            background: rgba(255, 255, 255, 0.03); 
-            border: 1px solid var(--border-color); 
-            padding: 12px 16px; 
-            border-radius: 16px; 
-            border-top-left-radius: 4px; 
-            font-size: 14px; 
-            line-height: 1.5; 
-            word-break: break-word; 
-        }
-
-        /* Тонкие скроллбары */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
-
-        @media (max-width: 768px) {
-            main { grid-template-columns: 1fr; height: auto; overflow-y: auto; }
-            body { overflow: auto; }
-            .glass-panel { height: 400px; }
-        }
-    </style>
-</head>
-<body>
-
-    <div class="background-glow">
-        <div class="blob blob-1"></div>
-        <div class="blob blob-2"></div>
-        <div class="blob blob-3"></div>
-    </div>
-
-    <header>
-        <div class="logo"><h1>Server Live Dashboard</h1></div>
-        <button class="theme-toggle" id="themeBtn">
-            <span id="themeIcon">🌙</span> <span id="themeText">Темная тема</span>
-        </button>
-    </header>
-
-    <main>
-        <section class="glass-panel">
-            <div class="panel-header">
-                <span>Онлайн игроки</span>
-                <span class="online-count" id="count">1</span>
-            </div>
-            <ul class="players-list" id="playersList">
-                <li class="player-item">
-                    <div class="player-avatar"></div>
-                    <span class="player-name">Pawel</span>
-                </li>
-            </ul>
-        </section>
-
-        <section class="glass-panel chat-container">
-            <div class="panel-header">
-                <span>Глобальный чат сервера [Global]</span>
-                <span style="font-size: 12px; color: var(--text-muted);">Live</span>
-            </div>
-            <div class="chat-messages" id="chatBox"></div>
-        </section>
-    </main>
-
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
-    <script>
-        // 1. Конфигурация базы данных
+// 1. Конфигурация базы данных Firebase
         const firebaseConfig = {
             databaseURL: "https://lkchat-45824-default-rtdb.europe-west1.firebasedatabase.app/" 
         };
@@ -247,7 +7,11 @@
         const database = firebase.database();
         const chatBox = document.getElementById('chatBox');
 
-        // 2. Получение сообщений в реальном времени
+        // URL игроков с карты Legion Kings через CORS-прокси (чтобы обойти блокировку)
+        const TARGET_URL = "https://map.legion-kings.ru/tiles/players.json";
+        const DYNMAP_JSON_URL = `https://api.allorigins.win/raw?url=${encodeURIComponent(TARGET_URL)}`;
+
+        // 2. Получение сообщений чата в реальном времени
         database.ref('chat').limitToLast(50).on('child_added', (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -272,6 +36,58 @@
             chatBox.appendChild(messageDiv);
             chatBox.scrollTop = chatBox.scrollHeight; // Скролл вниз
         }
+
+        // 3. ПОЛУЧЕНИЕ ОНЛАЙНА С КАРТЫ PL3XMAP (Legion Kings)
+        async function updateOnline() {
+            try {
+                // Запрашиваем данные через прокси
+                const response = await fetch(DYNMAP_JSON_URL);
+                if (!response.ok) throw new Error('Сеть ответила с ошибкой');
+                
+                const players = await response.json(); // Pl3xMap возвращает массив игроков напрямую
+                
+                const playersList = document.getElementById('playersList');
+                const countSpan = document.getElementById('count');
+                
+                // Очищаем старый список
+                playersList.innerHTML = '';
+                
+                // Проверяем, есть ли игроки в массиве
+                if (!players || players.length === 0) {
+                    countSpan.innerText = "0";
+                    playersList.innerHTML = '<li class="player-item"><span class="player-name" style="color:var(--text-muted)">На сервере пусто :(</span></li>';
+                    return;
+                }
+
+                // Обновляем циферку общего онлайна
+                countSpan.innerText = players.length;
+
+                // Проходимся по каждому игроку из JSON карты
+                players.forEach(player => {
+                    const playerName = player.name; // Извлекаем ник
+                    
+                    // Генерируем аватарку через Crafatar (overlay добавляет слой маски/наушников/шлема со скина)
+                    const avatarUrl = `https://crafatar.com/avatars/${playerName}?size=32&overlay`;
+
+                    const li = document.createElement('li');
+                    li.className = 'player-item';
+                    li.innerHTML = `
+                        <img class="player-avatar" src="${avatarUrl}" alt="${playerName}" onerror="this.src='https://crafatar.com/avatars/Steeve?size=32'">
+                        <span class="player-name">${escapeHTML(playerName)}</span>
+                    `;
+                    playersList.appendChild(li);
+                });
+
+            } catch (error) {
+                console.error("Ошибка обновления онлайна:", error);
+                document.getElementById('count').innerText = "err";
+            }
+        }
+
+        // Запуск парсинга при открытии страницы
+        updateOnline();
+        // Обновление каждые 15 секунд (для Pl3xMap этого более чем достаточно, чтобы не нагружать твой сайт и прокси)
+        setInterval(updateOnline, 15000);
 
         // Безопасность (XSS-защита)
         function escapeHTML(str) {
@@ -298,6 +114,3 @@
                 themeText.innerText = 'Темная тема';
             }
         });
-    </script>
-</body>
-</html>
