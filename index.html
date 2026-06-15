@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Server Chat & Online</title>
+    <style>
+        /* --- ПЕРЕМЕННЫЕ ДЛЯ ТЕМ ОФОРМЛЕНИЯ --- */
+        :root[data-theme="dark"] {
+            --bg-color: #0b0c16;
+            --container-bg: rgba(16, 18, 35, 0.65);
+            --border-color: rgba(90, 104, 240, 0.2);
+            --text-main: #f0f2f5;
+            --text-muted: #8fa0dd;
+            --accent-color: #6366f1;
+            --chat-user-bg: rgba(99, 102, 241, 0.15);
+            /* Градиенты для жидкого фона (Темные, глубокие сине-фиолетовые) */
+            --fluid-1: #2e0854;
+            --fluid-2: #181a61;
+            --fluid-3: #4f46e5;
+        }
+
+        :root[data-theme="light"] {
+            --bg-color: #f4f7fe;
+            --container-bg: rgba(255, 255, 255, 0.75);
+            --border-color: rgba(99, 102, 241, 0.15);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --accent-color: #3b82f6;
+            --chat-user-bg: rgba(59, 130, 246, 0.1);
+            /* Градиенты для жидкого фона (Светло-голубые) */
+            --fluid-1: #bfdbfe;
+            --fluid-2: #dbeafe;
+            --fluid-3: #eff6ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- АНИМИРОВАННЫЙ ЖИДКИЙ ФОН (Abstract Fluid Background) --- */
+        .background-glow {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -1;
+            overflow: hidden;
+            filter: blur(80px);
+            opacity: 0.8;
+        }
+
+        .blob {
+            position: absolute;
+            background: linear-gradient(135deg, var(--fluid-3), var(--fluid-1));
+            border-radius: 50%;
+            mix-blend-mode: screen;
+            animation: float-blob 20s infinite alternate ease-in-out;
+        }
+        
+        :root[data-theme="light"] .blob {
+            mix-blend-mode: multiply; /* Для лучшего отображения на светлом фоне */
+            opacity: 0.6;
+        }
+
+        .blob-1 {
+            width: 600px;
+            height: 600px;
+            top: -10%;
+            right: -10%;
+            background: var(--fluid-1);
+            animation-duration: 25s;
+        }
+
+        .blob-2 {
+            width: 500px;
+            height: 500px;
+            bottom: -10%;
+            left: -5%;
+            background: var(--fluid-2);
+            animation-duration: 18s;
+            animation-delay: -5s;
+        }
+
+        .blob-3 {
+            width: 400px;
+            height: 400px;
+            top: 40%;
+            left: 40%;
+            background: var(--fluid-3);
+            animation-duration: 22s;
+            animation-delay: -2s;
+        }
+
+        @keyframes float-blob {
+            0% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+            50% { transform: translate(80px, 50px) scale(1.1) rotate(180deg); }
+            100% { transform: translate(-40px, -80px) scale(0.9) rotate(360deg); }
+        }
+
+        /* --- ШАПКА САЙТА (Header) --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 10;
+        }
+
+        .logo h1 {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: linear-gradient(45deg, var(--text-main), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Кнопка переключения темы */
+        .theme-toggle {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-color);
+        }
+
+        /* --- ОСНОВНОЙ КОНТЕНТ (Сетка) --- */
+        main {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 25px;
+            flex: 1;
+            padding: 25px;
+            height: calc(100vh - 85px);
+            max-width: 1600px;
+            width: 100%;
+            margin: 0 auto;
+            z-index: 10;
+        }
+
+        /* Общий стиль для панелей ("стеклянный" эффект) */
+        .glass-panel {
+            background: var(--container-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        .panel-header {
+            padding: 20px 25px;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .online-count {
+            background: var(--accent-color);
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        /* --- СПИСОК ИГРОКОВ (Слева) --- */
+        .players-list {
+            list-style: none;
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .player-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 14px;
+            margin-bottom: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .player-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] .player-item:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .player-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #444;
+            /* В будущем сюда можно подставлять скины через https://minotar.net/avatar/ник */
+        }
+
+        .player-name {
+            font-weight: 500;
+            font-size: 15px;
+        }
+
+        /* --- ОКНО ГЛOБАЛЬНОГО ЧАТА (Справа) --- */
+        .chat-container {
+            flex: 1;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Каждое сообщение чата */
+        .chat-message {
+            display: flex;
+            flex-direction: column;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .msg-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .msg-author {
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        .msg-body {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            border-radius: 16px;
+            border-top-left-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        /* Скроллбары (красивые, тонкие) */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
+        }
+
+        /* Адаптивность под мобилки */
+        @media (max-width: 768px) {
+            main {
+                grid-template-columns: 1fr;
+                height: auto;
+                overflow-y: auto;
+            }
+            body {
+                overflow: auto;
+            }
+            .glass-panel {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="background-glow">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <header>
+        <div class="logo">
+            <h1>Server Live Dashboard</h1>
+        </div>
+        <button class="theme-toggle" id="themeBtn">
+            <span id="themeIcon">🌙</span> <span id="themeText">Темная тема</span>
+        </button>
+    </header>
+
+    <main>
+        
+        <section class="glass-panel">
+            <div class="panel-header">
+                <span>Онлайн игроки</span>
+                <span class="online-count" id="count">3</span>
+            </div>
+            <ul class="players-list" id="playersList">
+                <li class="player-item">
+                    <div class="player-avatar" style="background-color: #ff5555;"></div>
+                    <span class="player-name">Seraphim</span>
+                </li>
+                <li class="player-item">
+                    <div class="player-avatar" style="background-color: #ffaa00;"></div>
+                    <span class="player-name">Notch</span>
+                </li>
+                <li class="player-item">
+                    <div class="player-avatar" style="background-color: #55ff55;"></div>
+                    <span class="player-name">Pawel</span>
+                </li>
+            </ul>
+        </section>
+
+        <section class="glass-panel chat-container">
+            <div class="panel-header">
+                <span>Глобальный чат сервера [Global]</span>
+                <span style="font-size: 12px; color: var(--text-muted);">Обновление в реальном времени</span>
+            </div>
+            
+            <div class="chat-messages" id="chatBox">
+                <div class="chat-message">
+                    <div class="msg-meta">
+                        <span class="msg-author">Seraphim</span>
+                        <span class="msg-time">14:47</span>
+                    </div>
+                    <div class="msg-body">Всем привет! Добро пожаловать на наш сервер. Наш чат теперь транслируется на GitHub Pages!</div>
+                </div>
+
+                <div class="chat-message">
+                    <div class="msg-meta">
+                        <span class="msg-author">Pawel</span>
+                        <span class="msg-time">14:48</span>
+                    </div>
+                    <div class="msg-body">Ого, это выглядит очень круто. И дизайн прямо как экран блокировки! 🔥</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const themeBtn = document.getElementById('themeBtn');
+        const themeIcon = document.getElementById('themeIcon');
+        const themeText = document.getElementById('themeText');
+        const html = document.documentElement;
+
+        themeBtn.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            if (currentTheme === 'dark') {
+                html.setAttribute('data-theme', 'light');
+                themeIcon.innerText = '☀️';
+                themeText.innerText = 'Светлая тема';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                themeIcon.innerText = '🌙';
+                themeText.innerText = 'Темная тема';
+            }
+        });
+    </script>
+</body>
+</html>
