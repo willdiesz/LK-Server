@@ -284,12 +284,18 @@ const DYNMAP_JSON_URL = `https://corsproxy.io/?${encodeURIComponent(TARGET_URL)}
         }
 
         // 3. ПОЛУЧЕНИЕ ОНЛАЙНА С КАРТЫ PL3XMAP (Legion Kings)
+        // Пробуем allorigins со специальным флагом JSON, который обходит заголовки
+        const TARGET_URL = "https://map.legion-kings.ru/tiles/players.json";
+        const DYNMAP_JSON_URL = `https://api.allorigins.win/get?url=${encodeURIComponent(TARGET_URL)}`;
+
         async function updateOnline() {
             try {
                 const response = await fetch(DYNMAP_JSON_URL);
-                if (!response.ok) throw new Error('Сеть ответила с ошибкой');
+                if (!response.ok) throw new Error('Ошибка сети');
                 
-                const players = await response.json();
+                const wrapper = await response.json();
+                // allorigins при таком запросе прячет настоящий ответ внутрь поля contents в виде строки
+                const players = JSON.parse(wrapper.contents); 
                 
                 const playersList = document.getElementById('playersList');
                 const countSpan = document.getElementById('count');
@@ -320,21 +326,11 @@ const DYNMAP_JSON_URL = `https://corsproxy.io/?${encodeURIComponent(TARGET_URL)}
             } catch (error) {
                 console.error("Ошибка обновления онлайна:", error);
                 document.getElementById('count').innerText = "err";
+                
+                // Выводим подсказку для отладки прямо в список
+                document.getElementById('playersList').innerHTML = `<li class="player-item"><span class="player-name" style="color:#ff4a4a; font-size: 13px;">Ошибка защиты карты. Рекомендуется синхронизация через Firebase.</span></li>`;
             }
         }
-
-        // Запуск парсинга при открытии страницы
-        updateOnline();
-        // Обновление каждые 15 секунд
-        setInterval(updateOnline, 15000);
-
-        // Безопасность (XSS-защита)
-        function escapeHTML(str) {
-            return str.replace(/[&<>'"]/g, 
-                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-            );
-        }
-
         // Переключатель тем
         const themeBtn = document.getElementById('themeBtn');
         const themeIcon = document.getElementById('themeIcon');
