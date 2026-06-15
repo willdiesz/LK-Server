@@ -288,49 +288,52 @@ const DYNMAP_JSON_URL = `https://corsproxy.io/?${encodeURIComponent(TARGET_URL)}
         const TARGET_URL = "https://map.legion-kings.ru/tiles/players.json";
         const DYNMAP_JSON_URL = `https://api.allorigins.win/get?url=${encodeURIComponent(TARGET_URL)}`;
 
-        async function updateOnline() {
-            try {
-                const response = await fetch(DYNMAP_JSON_URL);
-                if (!response.ok) throw new Error('Ошибка сети');
-                
-                const wrapper = await response.json();
-                // allorigins при таком запросе прячет настоящий ответ внутрь поля contents в виде строки
-                const players = JSON.parse(wrapper.contents); 
-                
-                const playersList = document.getElementById('playersList');
-                const countSpan = document.getElementById('count');
+        // 3. ПОЛУЧЕНИЕ ОНЛАЙНА НАПРЯМУЮ ИЗ FIREBASE
+        function updateOnline() {
+            const playersList = document.getElementById('playersList');
+            const countSpan = document.getElementById('count');
+
+            // Подписываемся на ветку 'online' в твоей БД Firebase
+            database.ref('online').on('value', (snapshot) => {
+                const players = snapshot.val(); // Ожидаем массив ников или объект
                 
                 playersList.innerHTML = '';
-                
-                if (!players || players.length === 0) {
+
+                if (!players) {
                     countSpan.innerText = "0";
-                    playersList.innerHTML = '<li class="player-item"><span class="player-name" style="color:var(--text-muted)">На сервере пусто :(</span></li>';
+                    playersList.innerHTML = '<li class="player-item"><span class="player-name" style="color:var(--text-muted); font-size: 14px;">Нет данных об онлайне</span></li>';
                     return;
                 }
 
-                countSpan.innerText = players.length;
+                // Превращаем данные в массив (на случай, если мод отправил объектом или списком)
+                const playersArray = Array.isArray(players) ? players : Object.values(players);
+                
+                countSpan.innerText = playersArray.length;
 
-                players.forEach(player => {
-                    const playerName = player.name;
-                    const avatarUrl = `https://crafatar.com/avatars/${playerName}?size=32&overlay`;
+                playersArray.forEach(playerName => {
+                    // Если мод передал объект (например, {name: "Pawel"}), берем поле name, иначе саму строку
+                    const name = typeof playerName === 'object' ? playerName.name : playerName;
+                    
+                    const avatarUrl = `https://crafatar.com/avatars/${name}?size=32&overlay`;
 
                     const li = document.createElement('li');
                     li.className = 'player-item';
                     li.innerHTML = `
-                        <img class="player-avatar" src="${avatarUrl}" alt="${playerName}" onerror="this.src='https://crafatar.com/avatars/Steeve?size=32'">
-                        <span class="player-name">${escapeHTML(playerName)}</span>
+                        <img class="player-avatar" src="${avatarUrl}" alt="${name}" onerror="this.src='https://crafatar.com/avatars/Steeve?size=32'">
+                        <span class="player-name">${escapeHTML(name)}</span>
                     `;
                     playersList.appendChild(li);
                 });
-
-            } catch (error) {
-                console.error("Ошибка обновления онлайна:", error);
-                document.getElementById('count').innerText = "err";
-                
-                // Выводим подсказку для отладки прямо в список
-                document.getElementById('playersList').innerHTML = `<li class="player-item"><span class="player-name" style="color:#ff4a4a; font-size: 13px;">Ошибка защиты карты. Рекомендуется синхронизация через Firebase.</span></li>`;
-            }
+            }, (error) => {
+                console.error("Ошибка Firebase:", error);
+                countSpan.innerText = "err";
+            });
         }
+
+        // Запускаем один раз, дальше Firebase сам будет обновлять страницу при изменении данных в БД!
+        updateOnline(); 
+        
+        // Строку с setInterval(updateOnline, 15000); МОЖНО УДАЛИТЬ из кода, она больше не нужна!
         // Переключатель тем
         const themeBtn = document.getElementById('themeBtn');
         const themeIcon = document.getElementById('themeIcon');
